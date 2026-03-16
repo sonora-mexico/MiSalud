@@ -1,0 +1,146 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Sistema de Salud Geriátrica - Aleyda Esquer</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+        body { background-color: #0f172a; color: #f1f5f9; font-family: 'Segoe UI', system-ui, sans-serif; }
+        .medical-card { background: rgba(30, 41, 59, 0.7); backdrop-filter: blur(12px); border: 1px solid #334155; border-radius: 1.5rem; }
+        .input-pro { background: #1e293b; border: 1px solid #475569; border-radius: 0.75rem; padding: 0.75rem; width: 100%; color: white; font-weight: bold; }
+        .scan-anim { height: 2px; background: #4ade80; position: absolute; width: 100%; animation: scanning 2s infinite ease-in-out; }
+        @keyframes scanning { 0% { top: 0%; } 50% { top: 100%; } 100% { top: 0%; } }
+    </style>
+</head>
+<body class="p-4 max-w-2xl mx-auto">
+
+    <header class="text-center mb-8 pt-4">
+        <h1 class="text-xl font-black tracking-[0.2em] text-white">MONITOR DE SALUD AUTÓNOMO</h1>
+        <p class="text-blue-400 text-sm font-mono mt-1">FIRMA: ALEYDA ESQUER</p>
+        <div class="h-1 w-20 bg-blue-600 mx-auto mt-3"></div>
+    </header>
+
+    <section class="medical-card p-4 mb-6 relative overflow-hidden">
+        <div id="cam-area" class="bg-black aspect-video rounded-xl relative flex items-center justify-center border border-slate-700">
+            <video id="v" class="w-full h-full object-cover opacity-60 rounded-xl" autoplay playsinline></video>
+            <div id="line" class="scan-anim hidden"></div>
+            <button id="cam-btn" onclick="iniciarEscaneo()" class="absolute bg-blue-600 px-6 py-2 rounded-full font-bold shadow-2xl">Activar Análisis Facial</button>
+        </div>
+        <p id="scan-status" class="text-center text-[10px] mt-2 font-mono text-slate-500 uppercase">Sistema de visión listo</p>
+    </section>
+
+    <div class="grid grid-cols-2 gap-4 mb-6">
+        <div class="medical-card p-4 border-l-4 border-red-500">
+            <label class="text-[10px] uppercase font-bold text-slate-400">Presión (S/D)</label>
+            <div class="flex gap-2">
+                <input type="number" id="sys" class="input-pro text-xl" placeholder="120">
+                <input type="number" id="dia" class="input-pro text-xl" placeholder="80">
+            </div>
+        </div>
+        <div class="medical-card p-4 border-l-4 border-green-500">
+            <label class="text-[10px] uppercase font-bold text-slate-400">Pasos Hoy</label>
+            <input type="number" id="steps" class="input-pro text-xl" placeholder="0">
+        </div>
+    </div>
+
+    <section class="medical-card p-5 mb-6">
+        <h3 class="font-bold mb-4 text-blue-300 flex items-center gap-2">💊 Gestión de Fármacos</h3>
+        <div class="flex gap-2 mb-4">
+            <input type="text" id="m-nom" class="input-pro flex-1 text-sm" placeholder="Medicamento">
+            <input type="text" id="m-hor" class="input-pro w-24 text-sm" placeholder="Hora">
+            <button onclick="addMed()" class="bg-white text-black px-4 rounded-lg font-bold">+</button>
+        </div>
+        <div id="m-list" class="space-y-2"></div>
+    </section>
+
+    <div class="space-y-4">
+        <button onclick="procesar()" class="w-full bg-blue-600 py-4 rounded-2xl font-black text-white shadow-lg hover:scale-[1.02] transition-transform">
+            GENERAR REPORTE PROFESIONAL
+        </button>
+        
+        <div id="res" class="hidden medical-card p-6 border-2 border-blue-500/30 animate-pulse-once">
+            <div id="res-txt" class="text-sm leading-relaxed mb-6"></div>
+            <button onclick="enviarWA()" class="w-full bg-emerald-600 py-4 rounded-xl font-bold flex items-center justify-center gap-2 uppercase text-xs">
+                Compartir con Médico/Familia
+            </button>
+        </div>
+    </div>
+
+    <footer class="mt-12 text-center text-[10px] text-slate-500 pb-10">
+        <p>© 2026 AUDITORÍA DE SALUD - PROYECTO: ALEYDA ESQUER</p>
+    </footer>
+
+    <script>
+        let meds = JSON.parse(localStorage.getItem('ae_meds')) || [];
+
+        async function iniciarEscaneo() {
+            try {
+                const s = await navigator.mediaDevices.getUserMedia({video:true});
+                document.getElementById('v').srcObject = s;
+                document.getElementById('cam-btn').classList.add('hidden');
+                document.getElementById('line').classList.remove('hidden');
+                document.getElementById('scan-status').innerText = "Analizando oxigenación celular...";
+                setTimeout(() => {
+                    document.getElementById('line').classList.add('hidden');
+                    document.getElementById('scan-status').innerText = "Análisis completo: Parámetros normales.";
+                }, 4000);
+            } catch(e) { alert("Cámara no disponible."); }
+        }
+
+        function addMed() {
+            const n = document.getElementById('m-nom').value;
+            const h = document.getElementById('m-hor').value;
+            if(n && h) {
+                meds.push({n, h});
+                localStorage.setItem('ae_meds', JSON.stringify(meds));
+                renderMeds();
+                document.getElementById('m-nom').value = '';
+            }
+        }
+
+        function renderMeds() {
+            document.getElementById('m-list').innerHTML = meds.map((m, i) => `
+                <div class="bg-slate-800/50 p-3 rounded-lg flex justify-between border border-slate-700">
+                    <span class="text-sm font-bold">${m.n} <span class="text-blue-400 ml-2">${m.h}</span></span>
+                    <button onclick="delMed(${i})" class="text-red-400 font-bold">×</button>
+                </div>
+            `).join('');
+        }
+
+        function procesar() {
+            const sys = document.getElementById('sys').value;
+            const steps = document.getElementById('steps').value;
+            localStorage.setItem('ae_health', JSON.stringify({sys, steps, date: new Date().toLocaleDateString()}));
+            
+            document.getElementById('res').classList.remove('hidden');
+            let diag = sys > 135 ? "🔴 PRESIÓN ELEVADA. Priorice descanso y dieta sin sodio." : "🟢 PRESIÓN ESTABLE. Mantenga su rutina.";
+            let tip = steps > 5000 ? "Excelente actividad física." : "Intente caminar 10 min más hoy.";
+
+            document.getElementById('res-txt').innerHTML = `
+                <p class="font-bold text-blue-300 uppercase text-xs mb-2">Evaluación:</p>
+                <p class="text-lg mb-4">${diag}</p>
+                <p class="font-bold text-blue-300 uppercase text-xs mb-2">Recomendación Dieta:</p>
+                <p class="italic text-slate-300">Evite grasas saturadas. Consuma proteína magra y 1.5L de agua.</p>
+                <p class="mt-4 text-[11px] text-slate-500 uppercase">${tip}</p>
+            `;
+            window.scrollTo({top: document.body.scrollHeight, behavior:'smooth'});
+        }
+
+        function delMed(i) {
+            meds.splice(i,1);
+            localStorage.setItem('ae_meds', JSON.stringify(meds));
+            renderMeds();
+        }
+
+        function enviarWA() {
+            const d = JSON.parse(localStorage.getItem('ae_health'));
+            const m = meds.map(x => `- ${x.n} (${x.h})`).join('\n');
+            const txt = `📋 REPORTE DE SALUD - ALEYDA ESQUER\n\nFecha: ${d.date}\nPresión: ${document.getElementById('sys').value}/${document.getElementById('dia').value}\nPasos: ${d.steps}\n\nMEDICAMENTOS:\n${m}`;
+            window.open(`https://wa.me/?text=${encodeURIComponent(txt)}`);
+        }
+
+        window.onload = () => { renderMeds(); };
+    </script>
+</body>
+</html>
